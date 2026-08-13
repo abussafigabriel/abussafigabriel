@@ -1,0 +1,16 @@
+{
+  "name": "stripe-ga4-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "functions-framework --target=stripeGa4Bridge"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0",
+    "stripe": "^17.0.0"
+  }
+}
