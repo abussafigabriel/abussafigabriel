@@ -23,12 +23,6 @@ import { createSign } from 'node:crypto';
 const PROPERTY_ID = '531484467';
 const SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 
-// Top-level await failures surface as unhandled rejections; print the message
-// rather than a stack trace, since this is run by hand.
-process.on('unhandledRejection', (err) => {
-  console.error(`\nFalhou: ${err?.message ?? err}`);
-  process.exit(1);
-});
 
 function parseArgs(argv) {
   const out = {};
@@ -136,6 +130,10 @@ console.log(`Propriedade : ${PROPERTY_ID}`);
 console.log(`Conta       : ${key.client_email}`);
 console.log(`Janela      : ultimos ${days} dias (fuso da propriedade)\n`);
 
+// Wrapped in a function so a failure prints one clear line. A rejected
+// top-level await is a module evaluation error, which no process-level
+// handler can intercept.
+async function main() {
 const token = await getAccessToken(key);
 
 // 1. Every event name seen per day - answers "chegou ou nao chegou".
@@ -216,3 +214,9 @@ if (typeof args.transaction === 'string') {
       : `\n>> NAO ENCONTRADA: ${args.transaction} nao esta na propriedade nesta janela.`
   );
 }
+}
+
+main().catch((err) => {
+  console.error(`\nFalhou: ${err.message}`);
+  process.exit(1);
+});
