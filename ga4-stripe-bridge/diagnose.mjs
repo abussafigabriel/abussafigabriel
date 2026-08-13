@@ -151,11 +151,19 @@ async function main() {
     })
   );
 
-  let messages = [];
+  let messages;
   try {
     messages = JSON.parse(validation.text).validationMessages ?? [];
   } catch {
-    console.log(`Unparseable response (HTTP ${validation.status}): ${validation.text}`);
+    // Anything unparseable means we never reached GA4 - a proxy, a firewall or
+    // an outage. Reporting PASS here would be worse than useless.
+    console.log(`FAIL - could not reach the validation endpoint (HTTP ${validation.status}).`);
+    console.log(`Response body: ${validation.text.slice(0, 300) || '<empty>'}`);
+    console.log(
+      '\nThis machine cannot talk to www.google-analytics.com, so the diagnostic\n' +
+        'cannot run here. Run it from a machine with outbound access to that host.'
+    );
+    process.exit(3);
   }
 
   if (messages.length === 0) {
@@ -238,21 +246,23 @@ async function main() {
   console.log(`  without session_id : ${withoutId}`);
   console.log(`  with session_id    : ${withId}`);
   console.log(
-    '\nGA4 has had a long-standing defect where purchase events carrying session_id\n' +
-      'are accepted and then never processed. Check Reports > Realtime (event count\n' +
-      'by event name), then Transactions once processing catches up, and see which\n' +
-      'of the two IDs shows up. That tells you empirically whether your property is\n' +
-      'affected - do not guess.'
+    '\nGA4 has a long-standing defect where purchase events carrying session_id are\n' +
+      'accepted with 204 and then never processed, while the same event without it\n' +
+      'lands normally. The worker currently omits session_id, which is the SAFE\n' +
+      'shape - adding it to "fix" a missing purchase can break what works.\n' +
+      'Check Realtime (event count by event name) within 30 minutes and see which\n' +
+      'of the two IDs shows up, rather than guessing.'
   );
 
   heading('What the outcome means');
   console.log(
-    'Both land   -> GA4 is healthy. The break is upstream: the Stripe webhook never\n' +
-      '               fired, or the Cloud Function errored before calling GA4.\n' +
-      '               Check Stripe > Developers > Webhooks (LIVE mode) delivery log\n' +
-      '               and the Cloud Function logs for the purchase timestamp.\n\n' +
-      'Neither lands -> credentials or property targeting is wrong (see Step 2).\n\n' +
-      'Only one lands -> use that shape in the bridge; set SEND_SESSION_ID to match.'
+    'Both land     -> GA4 ingests fine. A $0.00 revenue report is then explained by\n' +
+      '                 the refund, not by a broken pipeline: a refund carrying the\n' +
+      '                 same transaction_id subtracts the full purchase revenue.\n' +
+      '                 Verify with Engagement > Events (event COUNT, not revenue).\n\n' +
+      'Neither lands -> credentials or property targeting is wrong (see Step 2), or a\n' +
+      '                 data filter in Admin > Data Streams is dropping the traffic.\n\n' +
+      'Only the no-session_id one lands -> keep omitting session_id.'
   );
 }
 

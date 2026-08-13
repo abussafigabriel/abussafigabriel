@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { buildGa4Payload } = require('./function/mapping.js');
+const { buildGa4Payload } = require('./reference/mapping.js');
 
 const SAMPLE = {
   type: 'payment_intent.succeeded',

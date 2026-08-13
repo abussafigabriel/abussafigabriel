@@ -1,152 +1,177 @@
-# SeshDx — GA4 purchase event missing: diagnosis and fix
+# SeshDx — por que o GA4 mostra $0,00 na compra de 13/08
 
-Live purchase `pi_3U40tr7nPZQ9eEGQ1xMtBxbP` ($4.18 USD, `livemode: true`) was created
-**2026-08-13 15:50:35 UTC** and produced no `purchase` event and no revenue in GA4
-property `531484467`.
+**Resposta curta: o pipeline provavelmente funcionou. O relatório mostra zero porque
+o teste apagou a própria evidência ao reembolsar 115 segundos depois.**
 
-## What the evidence already rules out
+Este documento corrige a hipótese nº 1 da seção 6 do handoff.
 
-These are dead ends — do not spend time on them.
+---
 
-| Hypothesis | Ruled out because |
-| --- | --- |
-| GA4 tag isn't installed / site isn't tracked | Realtime shows 4 active users and 22 views across `/homepage`, `/products/*`. Client-side collection works. |
-| The event was too old for GA4 to accept | GA4 discards events older than 72h. This one is minutes old relative to the screenshots. |
-| The refund erased the purchase | A GA4 `refund` event never deletes a `purchase` event. Purchase revenue would still read $4.18, not $0.00. |
-| Reporting latency | Reports snapshot already shows today's sessions, users and traffic sources. The property is processing today's data; the purchase simply is not in it. |
+## 1. O que aconteceu
 
-The break is therefore **between Stripe and GA4**, not inside GA4's reporting.
-
-## Ranked root causes
-
-### 1. The Stripe webhook never fired (most likely)
-
-Two independent reasons, either of which is fatal and both of which are silent:
-
-- **`invoice.payment_paid` is not a Stripe event type.** The architecture diagram
-  lists it as an existing webhook. Stripe's real events are **`invoice.paid`** and
-  **`invoice.payment_succeeded`**. An endpoint subscribed to a name Stripe never
-  emits stays quiet forever and shows zero delivery attempts.
-- **Test-mode endpoint vs. a live-mode payment.** Stripe keeps test and live
-  webhook endpoints completely separate, with different signing secrets. This
-  charge was `livemode: true`. A webhook registered while the dashboard was in
-  test mode will never see it.
-
-Compounding both: the Stripe account belongs to **OpenLoop**, not to us. Confirm a
-live-mode endpoint pointing at the Cloud Function actually exists in *their*
-account.
-
-**Check:** Stripe → Developers → Webhooks → switch to **Live mode** → open the
-endpoint → look for a delivery attempt at `2026-08-13 15:50:35 UTC`.
-No attempt logged = the webhook is the bug and nothing downstream matters.
-
-### 2. No `client_id` to attribute the purchase to (confirmed structural gap)
-
-The PaymentIntent carries `"metadata": {}` — completely empty. There is no
-`ga_client_id`, no session ID, no affiliate ref. Run `node dry-run.mjs --sample`
-and the mapper reports `client_id source: synthetic`.
-
-That means even a perfectly working webhook has nothing to join the purchase back
-to the browsing session. Depending on how the current function is written it will
-either throw (no event at all) or emit an event attributed to `(direct)/(none)`.
-
-The fix is upstream of the bridge: write the GA4 `client_id` (and `session_id`)
-into Stripe `metadata` at checkout creation, via the intake payload the serverless
-endpoint already receives.
-
-Related symptom already visible in the screenshots: `seshdiagnostics.co…` appears
-as its own **referral** source. That is a self-referral — the checkout hop is
-starting a new session and discarding the original campaign attribution.
-
-### 3. Wrong Measurement Protocol credentials or wrong property
-
-`POST /mp/collect` answers **204 No Content for virtually any payload**, including
-one with a bad `api_secret` or a measurement ID belonging to a different property.
-A green log line in the Cloud Function proves delivery, never ingestion.
-
-The API secret must be created on the **same data stream** as the measurement ID.
-
-### 4. `session_id` on purchase events
-
-GA4 has a long-standing defect where `purchase` events sent through the
-Measurement Protocol *with* `session_id` are accepted and then never processed,
-while the same event without it lands. Step 3 of the diagnostic tests both shapes
-so you settle this with data instead of guessing.
-
-### 5. `timestamp_micros` in seconds
-
-Stripe's `created` is in **seconds** (`1786636235`). Passing it straight into
-`timestamp_micros` resolves to **1970-01-01**, far outside the 72-hour window, and
-GA4 drops the event silently. This bridge omits `timestamp_micros` entirely so
-GA4 stamps arrival time.
-
-## 10-minute triage
-
-```bash
-# 1. Prove whether GA4 can receive a purchase at all.
-node diagnose.mjs --measurement-id G-XXXXXXX --api-secret <secret>
-
-# 2. See what your real Stripe event maps to, without sending anything.
-node dry-run.mjs --sample
-node dry-run.mjs path/to/your-event.json
+```
+15:50:43 UTC   purchase   $4,18   transaction_id = pi_3U40tr7nPZQ9eEGQ1xMtBxbP
+15:52:38 UTC   refund     $4,18   transaction_id = pi_3U40tr7nPZQ9eEGQ1xMtBxbP
+                                  ^^^^^^^^^^^^^^ o MESMO id, 115 segundos depois
 ```
 
-`diagnose.mjs` runs three steps:
+No GA4, um evento `refund` que traz **o mesmo `transaction_id`** e **o valor cheio**
+não é "mais um evento". É a definição de **reembolso total**: o GA4 usa o
+`transaction_id` para localizar a compra original e **subtrair a receita dela**.
 
-1. **Schema validation** against `/debug/mp/collect`, which writes nothing and
-   returns real error messages. (It does *not* check the API secret.)
-2. **Credential proof** — a purchase with `debug_mode: 1`. Watch GA4 → Admin →
-   **DebugView**. Appears within ~30s = measurement ID, API secret and property
-   are all correct. Stays empty = you found the bug.
-3. **`session_id` A/B** — two purchases differing only by that parameter. Whichever
-   `transaction_id` shows up in Realtime tells you which shape your property accepts.
+Resultado aritmético: `+4,18 − 4,18 = 0,00`.
 
-Reading the result:
+É exatamente o que as quatro capturas de tela mostram:
 
-- **Both land** → GA4 is healthy; the break is the Stripe webhook or the function. Go to cause 1.
-- **Neither lands** → credentials or property targeting. Go to cause 3.
-- **Only one lands** → set `SEND_SESSION_ID` to match and move on.
+| Relatório | Mostra | Por quê |
+|---|---|---|
+| Purchase revenue | `$0,00` | receita da compra menos a do reembolso |
+| Purchases / Ecommerce purchases | `0` | a transação foi revertida |
+| Transactions | vazio | idem |
+| Best sellers | "No data available" | receita por item também zerou |
 
-## The bridge
+Somado à latência de 24–48h dos relatórios processados, **as capturas são
+compatíveis com um pipeline 100% funcional**. Elas não provam defeito nenhum.
 
-`function/` is a corrected Cloud Function replacing the current one. What it fixes:
+### Correção ao que eu mesmo afirmei antes
 
-- Subscribes to **`invoice.paid`** and **`charge.refunded`**, the event names Stripe actually emits.
-- Verifies the Stripe signature against `req.rawBody`, not a re-serialized body.
-- Rejects events whose `livemode` does not match `EXPECT_LIVEMODE`, so a test payment can never pollute production reporting.
-- Converts Stripe minor units to GA4 major units (`418` → `4.18`), with the zero-decimal currency list handled.
-- Uses the **invoice ID** as `transaction_id`, which is stable across Stripe retries and gives GA4 a real dedup key.
-- Emits `items[]`, `currency`, `value` and `engagement_time_msec` so Purchase revenue, Transactions and Best sellers all populate.
-- Omits `timestamp_micros`.
-- Logs which tier the `client_id` came from, so degraded attribution is visible instead of silent.
+Numa versão anterior deste documento eu escrevi que "um `refund` nunca apaga um
+`purchase`". Isso vale para a **contagem do evento**, e é falso para as **métricas
+de receita**. A distinção é justamente o que resolve este caso — ver seção 2.
+
+---
+
+## 2. O único lugar que dá a resposta: contagem de evento, não receita
+
+O reembolso zera a **receita**. Ele **não apaga o evento `purchase` da contagem**.
+
+Então o discriminador é:
+
+> **GA4 → Reports → Engagement → Events**, data de hoje.
+> Procurar as linhas `purchase` e `refund` na coluna **Event count**.
+
+- **Aparecem com contagem ≥ 1** → o GA4 recebeu tudo. O `$0,00` está **correto**,
+  o pipeline está provado, e o problema nº 1 do handoff não existe.
+- **Não aparecem depois de 48h** → aí sim o evento foi descartado apesar do `204`.
+
+Não adianta olhar Transactions nem Reports snapshot: os dois medem receita, e
+receita reembolsada é zero por definição.
+
+*Observação:* o Realtime tem janela de **30 minutos**. A compra foi 15:50 e o
+handoff é 16:10 — essa janela já fechou. Realtime não serve mais para esta compra.
+
+---
+
+## 3. Prova imediata, sem esperar 48h e sem gastar nada
+
+`diagnose.mjs` manda um `purchase` sintético com `debug_mode: 1` pelas **mesmas
+credenciais do worker** e ele aparece no **DebugView em ~30 segundos**.
+
+Isso separa em definitivo as duas únicas explicações que restam:
+"GA4 não ingere o que o worker manda" contra "GA4 ingeriu e o relatório está certo".
 
 ```bash
-cd function && npm install
-gcloud functions deploy stripe-ga4-bridge \
-  --gen2 --runtime=nodejs22 --region=us-central1 \
-  --source=. --entry-point=stripeGa4Bridge \
-  --trigger-http --allow-unauthenticated \
-  --set-env-vars GA4_MEASUREMENT_ID=G-XXXXXXX,GA4_API_SECRET=...,STRIPE_WEBHOOK_SECRET=whsec_...
+# 1. Ler o api_secret da revisão viva (não está neste repositório):
+gcloud run revisions describe seshdx-tracking-webhook-00050-vid \
+  --region=us-central1 --project=seshdx-tracking --format=json
+
+# 2. Rodar a escada de diagnóstico:
+node diagnose.mjs --measurement-id G-WHP0DJ703Q --api-secret <valor_do_env>
 ```
 
-| Env var | Purpose |
-| --- | --- |
-| `GA4_MEASUREMENT_ID` | `G-XXXXXXX` from the web data stream |
-| `GA4_API_SECRET` | Created on that **same** stream |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_…` from the **live-mode** endpoint |
-| `SEND_SESSION_ID` | `true` only if step 3 showed session_id events land |
-| `GA4_DEBUG_MODE` | `true` routes events to DebugView while testing |
-| `EXPECT_LIVEMODE` | `true` in production, `false` for a test-mode endpoint |
+Os três passos:
 
-`lookupVisitorContext()` in `index.js` is the seam for the intake store: return
-`{ ga_client_id, ga_session_id }` for a given email or Stripe customer and
-attribution is restored end to end.
+1. **Validação de schema** em `/debug/mp/collect` — não escreve nada. (Este
+   endpoint **não** confere o `api_secret`, então passar aqui não prova credencial.)
+2. **Prova de credencial** — `purchase` com `debug_mode: 1`. Abrir
+   **GA4 → Admin → DebugView**. Apareceu em ~30s: measurement ID, API secret e
+   propriedade estão certos, e o worker consegue escrever nesta propriedade.
+   Ficou vazio: achamos o defeito.
+3. **A/B de `session_id`** — dois `purchase` que diferem só nesse parâmetro.
 
-## Closing the attribution loop
+Leitura do resultado:
 
-Ordered by dependency:
+- **Aparece no DebugView** → GA4 ingere normalmente. O `$0,00` é o reembolso. Fim.
+- **Não aparece** → credencial ou propriedade errada, ou filtro de dados
+  (Admin → Data Streams → Data filters) descartando o tráfego do worker.
 
-1. Fix the webhook subscription (cause 1) — nothing works until an event arrives.
-2. Persist `ga_client_id` + `ga_session_id` at intake, keyed by email.
-3. Pass them into Stripe `metadata` at checkout, or resolve them in `lookupVisitorContext()`.
-4. Re-run `diagnose.mjs` and confirm a real purchase in Transactions.
+---
+
+## 4. Correção importante ao handoff: **não** adicionar `session_id`
+
+A seção 6 lista "`session_id` ausente no payload" como suspeita nº 1. A
+documentação do Google de fato diz que `session_id` e `engagement_time_msec` são
+necessários para relatórios com escopo de sessão.
+
+**Na prática, para eventos `purchase`, é o contrário.** Existe um defeito
+conhecido e longo do GA4 em que `purchase` enviado por Measurement Protocol
+**com** `session_id` é aceito com `204` e depois nunca processado, enquanto o
+mesmo evento **sem** `session_id` entra normalmente.
+
+O worker hoje **não** envia `session_id` — ou seja, já está no formato seguro.
+Adicionar esse parâmetro para "consertar" o problema tem chance real de
+**quebrar** o que está funcionando. O passo 3 do `diagnose.mjs` mede isso na
+propriedade de vocês em vez de apostar.
+
+---
+
+## 5. O que continua sendo problema de verdade
+
+O `$0,00` é explicável. O item da seção 7.1 do handoff **não** é, e ele é o que
+de fato compromete a promessa de "GA4 como fonte única de verdade":
+
+A compra foi ao GA4 com `clientIdPresent: false` e `client_id` derivado
+`2927675193.981011370`, em vez do real `1234833447.1786635973`. A receita entra,
+mas colada num **usuário fantasma**, atribuída a `(direct)/(none)` — não ao
+afiliado nem à campanha.
+
+Sintoma disso já visível nas capturas: `seshdiagnostics.co…` aparece como
+**referral de si mesmo** na lista de Session source/medium. É auto-referência: o
+salto para o checkout está abrindo sessão nova e descartando a origem.
+
+A correção (janela de releitura 3×600ms → 8×1200ms) foi publicada na v5.1.1
+**depois** da compra de teste e nunca viu tráfego real.
+
+`reference/mapping.js` documenta o formato de payload correto e serve de conferência:
+
+```bash
+node dry-run.mjs --sample          # usa o pi_3U40tr… real
+node dry-run.mjs evento.json
+```
+
+Ele reproduz o defeito de forma visível — com `metadata: {}` vazio, reporta
+`client_id source: synthetic`. **É referência, não é para publicar.** O fonte
+canônico do worker é `Support/Analytics/serverless-v5/` (seção 10 do handoff).
+
+---
+
+## 6. Próximo teste — o desenho que não se autodestrói
+
+O teste de 13/08 não podia dar certo: reembolsar em 115 segundos zera a receita
+antes de qualquer relatório processar. O próximo precisa ser:
+
+1. Confirmar a versão viva: `curl -s https://seshdx-tracking-webhook-869202251383.us-central1.run.app/health` → esperar `5.1.1`.
+2. Fazer a compra **chegando por link de afiliado**, para exercitar a atribuição.
+3. **Não reembolsar.** Deixar parada no mínimo 60 minutos.
+4. Dentro dos primeiros 30 minutos: **Realtime → Event count by Event name**,
+   confirmar `purchase`. Essa é a janela em que Realtime ainda enxerga.
+5. Nos logs do worker, confirmar `clientIdPresent: true` e o `client_id` real —
+   é o que prova a correção 7.1.
+6. Só depois disso, reembolsar — e aí confirmar a correção 7.2 (um único
+   `refund_dispatched` por destino, não dois).
+7. Excluir as duas transações de teste do GA4 no fim.
+
+O passo 3 é o que faltou. Sem ele, mesmo um pipeline perfeito reporta `$0,00`.
+
+---
+
+## 7. Resumo do que precisa do Gabriel
+
+| # | Ação | Tempo |
+|---|---|---|
+| 1 | GA4 → Reports → Engagement → Events (hoje): `purchase` e `refund` aparecem na **Event count**? | 2 min |
+| 2 | Ler `GA4_API_SECRET` da revisão `00050-vid` e rodar `diagnose.mjs`, olhando o DebugView | 5 min |
+| 3 | Segunda compra de teste **sem reembolsar por 60 min**, entrando por link de afiliado | 15 min |
+
+Os itens 1 e 2 são independentes e podem ser feitos em paralelo. O item 2 é o que
+dá resposta definitiva hoje, sem esperar as 48h de processamento.
