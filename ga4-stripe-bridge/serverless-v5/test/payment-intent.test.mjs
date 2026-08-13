@@ -1,0 +1,21 @@
+import { readFileSync } from 'node:fs';
+const src = readFileSync(new URL('../src/handlers/stripe.js', import.meta.url),'utf8');
+const body = src.slice(src.indexOf('const asId ='), src.indexOf('function getPaymentIntentIdFromCharge'));
+const get = new Function(`${body}; return getPaymentIntentIdFromInvoice;`)();
+let p=0,t=0; const ck=(n,a,e)=>{t++; if(a===e){p++;console.log(`  PASS  ${n}`)} else console.log(`  FAIL  ${n}: esperado "${e}", veio "${a}"`)};
+
+ck('classico: payment_intent string', get({payment_intent:'pi_A'}), 'pi_A');
+ck('classico: payment_intent expandido', get({payment_intent:{id:'pi_B'}}), 'pi_B');
+ck('charge expandido', get({charge:{payment_intent:'pi_C'}}), 'pi_C');
+ck('charge expandido aninhado', get({charge:{payment_intent:{id:'pi_D'}}}), 'pi_D');
+ck('Invoice Payments API 2025', get({payments:{data:[{payment:{payment_intent:'pi_E'}}]}}), 'pi_E');
+ck('Invoice Payments sem wrapper', get({payments:{data:[{payment_intent:'pi_F'}]}}), 'pi_F');
+ck('aninhado em payment_details', get({payments:{data:[{payment:{payment_details:{payment_intent:'pi_G'}}}]}}), 'pi_G');
+ck('em lines', get({lines:{data:[{payment_intent:'pi_H'}]}}), 'pi_H');
+ck('payload real de 13/08 (sem nada)', get({id:'in_1',customer:'cus_1',amount_paid:418,currency:'usd'}), '');
+ck('charge como string nao inventa PI', get({charge:'ch_X'}), '');
+ck('objeto vazio', get({}), '');
+ck('campos nulos', get({payment_intent:null,charge:null,payments:null,lines:null}), '');
+ck('payments vazio', get({payments:{data:[]}}), '');
+ck('prioridade: direto vence os outros', get({payment_intent:'pi_TOP',payments:{data:[{payment:{payment_intent:'pi_LOW'}}]}}), 'pi_TOP');
+console.log(`\n${p}/${t} verificacoes passaram`); if(p!==t) process.exitCode=1;

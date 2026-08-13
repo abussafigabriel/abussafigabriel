@@ -1,0 +1,21 @@
+{
+  "name": "seshdx-tracking-webhook",
+  "version": "5.1.1",
+  "description": "SeshDx server-side tracking webhook (GA4, Meta, TikTok, First Promoter)",
+  "main": "src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node test/e2e.mjs"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/tasks": "^6.0.1",
+    "express": "^4.21.2",
+    "stripe": "^17.7.0"
+  }
+}

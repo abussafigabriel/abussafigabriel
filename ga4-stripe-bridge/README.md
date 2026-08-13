@@ -198,3 +198,27 @@ Estado final verificado por API: tráfego 100% em `00051-sfx`, segredo vivo
 - `test-verify-2026` e `cus_V3P8ZJcdgo3qcK` (11/08)
 
 A compra de 13/08 (`pi_3U40tr…`) **nunca entrou** — não há o que excluir dela.
+
+
+---
+
+# ESTADO FINAL — 13/08/2026 21:35 UTC
+
+| Entrega | Status |
+|---|---|
+| GA4 como fonte de verdade (`purchase` + `refund` ingeridos) | ✅ provado por API |
+| Atribuição colada na sessão real | ✅ mesmo `client_id` nos dois eventos |
+| Deduplicação de reembolso | ✅ 1 despacho, era 2 |
+| Meta CAPI / TikTok / First Promoter | ✅ 200 nos dois ciclos |
+| Timeout de fan-out | ✅ corrigido na v5.1.2 |
+| `invoice.payment_succeeded` | ✅ corrigido na v5.1.2 |
+
+- Diagnóstico e causa raiz: este arquivo
+- Evidência da compra e do reembolso: `EVIDENCE.md`
+- Correções finais e testes: `CHANGELOG-v5.1.2.md`
+- Como restaurar se algo quebrar: `RESTORE.md`
+- Runbook e pacote de prova para a cliente: `RUNBOOK.md`
+- Código-fonte de produção: `serverless-v5/`
+
+**Em produção:** revisão `00052-v512`, v5.1.2, `/health` 200 com todas as
+dependências verdes e zero erros nos logs.

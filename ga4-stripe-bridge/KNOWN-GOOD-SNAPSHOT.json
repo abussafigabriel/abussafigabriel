@@ -1,8 +1,8 @@
 {
-  "capturedAt": "2026-08-13T20:20:27.872Z",
+  "capturedAt": "2026-08-13T21:37:29.666Z",
   "note": "Estado bom conhecido. Restaurar = apontar 100% do trafego para liveRevision.",
-  "liveRevision": "seshdx-tracking-webhook-00051-sfx",
-  "image": "us-central1-docker.pkg.dev/seshdx-tracking/cloud-run-source-deploy/seshdx-tracking-webhook@sha256:23fc981dc453ce07c6075cd9fafbfc6b33035b4bdda21e5cd5f8bf5a10bb6089",
+  "liveRevision": "seshdx-tracking-webhook-00052-v512",
+  "image": "us-central1-docker.pkg.dev/seshdx-tracking/cloud-run-source-deploy/seshdx-tracking-webhook@sha256:f94bc05345f9964fe0169c88659c6268402a8ca78a15fd9c23795e0d7efc69e8",
   "envVarCount": 24,
   "env": [
     {
@@ -82,7 +82,7 @@
     },
     {
       "name": "DESTINATION_TIMEOUT_MS",
-      "value": "15000",
+      "value": "90000",
       "redacted": false
     },
     {
@@ -229,9 +229,14 @@
     {
       "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
       "revision": "seshdx-tracking-webhook-00051-sfx",
-      "percent": 100,
       "tag": "rc-v512"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00052-v512",
+      "percent": 100,
+      "tag": "rc-v512b"
     }
   ],
-  "restoreCommand": "gcloud run services update-traffic seshdx-tracking-webhook --region=us-central1 --project=seshdx-tracking --to-revisions=seshdx-tracking-webhook-00051-sfx=100"
+  "restoreCommand": "gcloud run services update-traffic seshdx-tracking-webhook --region=us-central1 --project=seshdx-tracking --to-revisions=seshdx-tracking-webhook-00052-v512=100"
 }

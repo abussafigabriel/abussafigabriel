@@ -191,6 +191,10 @@ Sintoma visível no próprio Stripe: dos quatro endpoints, três responderam às
 | Atribuição colada na sessão real | ✅ mesmo `client_id` em ambos |
 | Meta CAPI / TikTok / First Promoter | ✅ 200 nos dois ciclos |
 | Dedup de reembolso | ✅ |
-| Timeout de fan-out | ⚠️ aberto, sem perda de conversão |
-| `invoice.payment_succeeded` | ⚠️ aberto, caminho único de captura |
+| Timeout de fan-out | ✅ **corrigido na v5.1.2** |
+| `invoice.payment_succeeded` | ✅ **corrigido na v5.1.2** |
 | Tabelas processadas do GA4 | ⏳ conferir em 14/08 |
+
+As duas pendências foram fechadas na **v5.1.2** (revisão `00052-v512`, publicada
+21:35 UTC). Detalhes e testes em `CHANGELOG-v5.1.2.md`; o código-fonte completo
+está em `serverless-v5/`.

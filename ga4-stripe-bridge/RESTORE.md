@@ -21,6 +21,10 @@ Revisões do Cloud Run são **imutáveis**: `00051-sfx` continua existindo com o
 segredos corretos dentro dela, aconteça o que acontecer com as revisões novas.
 Por isso este arquivo não precisa guardar segredo nenhum — e não guarda.
 
+A v5.1.2 (`00052-v512`) é a revisão atual: mesma entrega, só com correções de
+log e timeout. O alvo de rollback continua sendo `00051-sfx`, que é o estado
+comprovado com tráfego real.
+
 `KNOWN-GOOD-SNAPSHOT.json` tem a configuração completa, com os 9 valores
 sensíveis substituídos por impressão digital SHA-256 para conferência.
 
@@ -30,13 +34,14 @@ sensíveis substituídos por impressão digital SHA-256 para conferência.
 curl -s https://seshdx-tracking-webhook-869202251383.us-central1.run.app/health
 ```
 
-Esperado: `"version":"5.1.1"` e `"ga4":true`.
+Esperado: `"version":"5.1.1"` e `"ga4":true` (ou `5.1.2`, se restaurar a `00052-v512`).
 
 ## Histórico de revisões relevante
 
 | Revisão | Estado |
 |---|---|
-| `00051-sfx` | ✅ **BOM** — v5.1.1 + segredo GA4 correto. Alvo de restauração |
+| `00052-v512` | ✅ **ATUAL** — v5.1.2. Correções de log e timeout; caminho de entrega intacto |
+| `00051-sfx` | ✅ **ALVO DE ROLLBACK** — v5.1.1 + segredo correto. Estado comprovado com tráfego real |
 | `00050-vid` | ❌ v5.1.1 com segredo morto — GA4 recebia 204 e descartava |
 | `00048-vut` | ❌ v5.1.0, segredo morto, sem correções 7.1/7.2 |
 | `00027-tnm` | ❌ 1 env var, sem measurement ID |
