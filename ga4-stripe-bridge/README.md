@@ -158,3 +158,43 @@ A arquitetura atual usa `transaction_id = payment_intent` (`pi_`). O histórico 
 `ch_`, `py_` e — em 11/08 — até um `cus_`. Quando o canal voltar, os relatórios vão
 misturar dois esquemas de identificação, e a receita antiga de ~US$1.500 continua lá
 para ser excluída.
+
+---
+
+# ADENDO 13/08 ~18:50 UTC — causa raiz confirmada e CORRIGIDA em produção
+
+## A prova A/B que fechou o caso
+
+Dois probes idênticos rodados **de dentro do GCP** (Cloud Run job descartável, imagem
+do próprio worker), diferindo só no `api_secret`, com verificação pela Realtime API:
+
+| Segredo | Envio | Resultado no GA4 |
+|---|---|---|
+| `sha c06192d262` (revisão viva 00050-vid) | `204` | **Nunca ingerido** (14 polls, 4,5 min) |
+| `sha 0d3a6bf767` (revisões fantasma de 11/08) | `204` | **Ingerido no 1º poll** (~30 s) |
+
+**Causa raiz:** o segredo do Measurement Protocol foi rotacionado no GA4 em 11/08 à
+noite (a mesma operação abortada que destruiu o env). A restauração de 13/08 usou um
+snapshot **anterior à rotação** — segredo antigo, já apagado do GA4. Todo envio
+desde então recebeu `204` e foi descartado. O `204` nunca foi prova de nada.
+
+## Correção aplicada
+
+```
+00051-sfx  criada 0% tráfego, tag rc-v512  →  /health 200 v5.1.1  →  100% tráfego
+GA4_API_SECRET: c06192d262 → 0d3a6bf767   (única mudança; 24 env vars preservadas)
+rollback: gcloud run services update-traffic seshdx-tracking-webhook \
+  --region=us-central1 --to-revisions=seshdx-tracking-webhook-00050-vid=100
+```
+
+Estado final verificado por API: tráfego 100% em `00051-sfx`, segredo vivo
+`0d3a6bf767`, URL principal respondendo 200 v5.1.1 com todas as dependências ok.
+
+## Transações de teste a excluir (atualizado)
+
+- `diag-alt-1786646097511` — purchase $0,01 do probe (a que **entrou**)
+- eventos `diag_ping` / `diag_ping2`
+- receita antiga ~US$1.500 (múltiplos de $229)
+- `test-verify-2026` e `cus_V3P8ZJcdgo3qcK` (11/08)
+
+A compra de 13/08 (`pi_3U40tr…`) **nunca entrou** — não há o que excluir dela.
