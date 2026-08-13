@@ -1,0 +1,237 @@
+{
+  "capturedAt": "2026-08-13T20:20:27.872Z",
+  "note": "Estado bom conhecido. Restaurar = apontar 100% do trafego para liveRevision.",
+  "liveRevision": "seshdx-tracking-webhook-00051-sfx",
+  "image": "us-central1-docker.pkg.dev/seshdx-tracking/cloud-run-source-deploy/seshdx-tracking-webhook@sha256:23fc981dc453ce07c6075cd9fafbfc6b33035b4bdda21e5cd5f8bf5a10bb6089",
+  "envVarCount": 24,
+  "env": [
+    {
+      "name": "NODE_ENV",
+      "value": "production",
+      "redacted": false
+    },
+    {
+      "name": "GCP_PROJECT_ID",
+      "value": "seshdx-tracking",
+      "redacted": false
+    },
+    {
+      "name": "FIRST_PROMOTER_API_KEY",
+      "value": "sha256:434548684ec7",
+      "redacted": true
+    },
+    {
+      "name": "FIRST_PROMOTER_ACCOUNT_ID",
+      "value": "nozgbztg",
+      "redacted": false
+    },
+    {
+      "name": "TIKTOK_PIXEL_ID",
+      "value": "D9GGH8JC77U79CKFAH70",
+      "redacted": false
+    },
+    {
+      "name": "META_PIXEL_ID",
+      "value": "988990017419251",
+      "redacted": false
+    },
+    {
+      "name": "OPENLOOP_WEBHOOK_TOKEN",
+      "value": "sha256:1247ff4837d8",
+      "redacted": true
+    },
+    {
+      "name": "OPENLOOP_SHARED_SECRET",
+      "value": "sha256:1247ff4837d8",
+      "redacted": true
+    },
+    {
+      "name": "FP_API_KEY",
+      "value": "sha256:434548684ec7",
+      "redacted": true
+    },
+    {
+      "name": "FP_ACCOUNT_ID",
+      "value": "nozgbztg",
+      "redacted": false
+    },
+    {
+      "name": "GA4_MEASUREMENT_ID",
+      "value": "G-WHP0DJ703Q",
+      "redacted": false
+    },
+    {
+      "name": "GA4_API_SECRET",
+      "value": "sha256:0d3a6bf767ff",
+      "redacted": true
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET",
+      "value": "sha256:9294d3b1fe0b",
+      "redacted": true
+    },
+    {
+      "name": "TIKTOK_ACCESS_TOKEN",
+      "value": "sha256:42d3e93d9bb8",
+      "redacted": true
+    },
+    {
+      "name": "META_CAPI_TOKEN",
+      "value": "sha256:869cd15ea040",
+      "redacted": true
+    },
+    {
+      "name": "DESTINATION_TIMEOUT_MS",
+      "value": "15000",
+      "redacted": false
+    },
+    {
+      "name": "STRIPE_API_TIMEOUT_MS",
+      "value": "2500",
+      "redacted": false
+    },
+    {
+      "name": "IDEMPOTENCY_LEASE_SECONDS",
+      "value": "120",
+      "redacted": false
+    },
+    {
+      "name": "META_API_VERSION",
+      "value": "v21.0",
+      "redacted": false
+    },
+    {
+      "name": "FUNNEL_ID_MAP_JSON",
+      "value": "{\"cmphm4dp80vizs6018p9vgv64\":\"longevity\",\"cmpdeooge045hs6017473fz25\":\"mwl-macro\",\"cmphlvqmx0v8is6015whapx2p\":\"mwl-micro\"}",
+      "redacted": false
+    },
+    {
+      "name": "OPENLOOP_INTAKE_CLIENT_ID",
+      "value": "01KRC55Z4EVDBV71K3E733M9RW",
+      "redacted": false
+    },
+    {
+      "name": "OPENLOOP_INTAKE_API_BASE",
+      "value": "https://intake-api.openloophealth.com/api/trpc",
+      "redacted": false
+    },
+    {
+      "name": "STRIPE_PUBLISHABLE_KEY",
+      "value": "sha256:589829bd0aa0",
+      "redacted": true
+    },
+    {
+      "name": "FP_REF_PROMOTER_CAMPAIGN_MAP_JSON",
+      "value": "{\"testnozgbztg\":25910834}",
+      "redacted": false
+    }
+  ],
+  "resources": {
+    "limits": {
+      "cpu": "1",
+      "memory": "512Mi"
+    },
+    "cpuIdle": true,
+    "startupCpuBoost": true
+  },
+  "timeout": "60s",
+  "serviceAccount": "869202251383-compute@developer.gserviceaccount.com",
+  "scaling": {
+    "maxInstanceCount": 10
+  },
+  "maxInstanceRequestConcurrency": 20,
+  "ingress": "INGRESS_TRAFFIC_ALL",
+  "traffic": [
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00050-vid"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00015-kez",
+      "tag": "rc-v4"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00016-bif",
+      "tag": "rc-v41"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00018-goh",
+      "tag": "rc-v42"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00020-xix",
+      "tag": "rc-v43"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00022-qil",
+      "tag": "rc-v44"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00024-pac",
+      "tag": "rc-v45"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00026-sav",
+      "tag": "rc-v45-refund"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00028-tob",
+      "tag": "rc-v46"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00030-rup",
+      "tag": "rc-v47"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00032-tap",
+      "tag": "rc-v48"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00034-cuz",
+      "tag": "rc-v49"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00032-49x",
+      "tag": "rc-v50"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00033-lxw",
+      "tag": "rc-v501"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00034-h7j",
+      "tag": "rc-v502"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00048-vut",
+      "tag": "rc-v510"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00050-vid",
+      "tag": "rc-v511"
+    },
+    {
+      "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+      "revision": "seshdx-tracking-webhook-00051-sfx",
+      "percent": 100,
+      "tag": "rc-v512"
+    }
+  ],
+  "restoreCommand": "gcloud run services update-traffic seshdx-tracking-webhook --region=us-central1 --project=seshdx-tracking --to-revisions=seshdx-tracking-webhook-00051-sfx=100"
+}
