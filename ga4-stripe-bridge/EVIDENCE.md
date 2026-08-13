@@ -129,3 +129,68 @@ o handoff cross-domain, não o worker.
    - receita antiga ~US$1.500 (múltiplos de $229)
    - `pi_3U40tr7nPZQ9eEGQ1xMtBxbP` **não** precisa: nunca entrou.
 4. Revogar a chave `claude-debug`.
+
+---
+
+# Reembolso — 13/08 20:14 UTC — correção 7.2 PROVADA
+
+Reembolso de USD 4,18 em `ch_3U43tT7nPZQ9eEGQ1peMnjEr` / `pi_3U43tT7nPZQ9eEGQ1oRWPnaB`,
+71 minutos após a compra (janela de espera cumprida).
+
+```
+20:14:03  ga4_refund_outbound   clientIdPresent=true  361179969.1786647438
+20:14:03  ga4_send_result       refund  status=204    361179969.1786647438
+20:14:03  meta_refund_outbound  status=200
+20:14:15  first_promoter_refund_outbound  status=200
+20:14:30  [ERRO] background_dispatch_failed  dispatch_timeout_15000ms
+20:14:43  refund_dispatched  ga4:204, meta:200, tiktok:200, first_promoter:200
+```
+
+GA4 Realtime confirmou a ingestão: `refund` eventCount=1.
+
+## Antes e depois, no mesmo cenário
+
+| | 15:52 (v5.1.0, segredo morto) | 20:14 (v5.1.1 + segredo correto) |
+|---|---|---|
+| `ga4_refund_outbound` | 2 | **1** |
+| `refund_dispatched` | 2 | **1** |
+| `client_id` | dois, um deles fantasma | **um, o real** |
+| Ingerido no GA4 | não | **sim** |
+
+O `client_id` do reembolso é idêntico ao da compra — receita e estorno no mesmo
+usuário, que é o que faz a receita líquida fechar corretamente.
+
+## Placar das correções da v5.1.1
+
+| Correção | Status | Evidência |
+|---|---|---|
+| 7.1 janela de atribuição | **PASSOU** | `clientIdPresent=true` na compra |
+| 7.2 dedup de reembolso | **PASSOU** | 1 `refund_dispatched` em vez de 2 |
+| 7.3 timeout de entrega | **FALHOU** | `dispatch_timeout_15000ms` nos dois testes |
+
+### Sobre a 7.3 — o handoff subestimou o tempo
+
+O `refund_dispatched` completo saiu às 20:14:43, **40 segundos** após o início. O
+handoff media ~8s e a correção subiu o limite para 15s. O fan-out real leva ~40s.
+
+Nenhuma conversão se perdeu em nenhum dos dois testes — o fan-out continua após o
+timeout e entrega. Mas subir o limite de novo é remendo. A correção estrutural é
+**habilitar a API do Cloud Tasks** e tirar o fan-out de dentro da requisição.
+
+Sintoma visível no próprio Stripe: dos quatro endpoints, três responderam às
+20:13:59 e o worker às 20:14:03.
+
+---
+
+# Estado final do projeto
+
+| Item | Status |
+|---|---|
+| GA4 recebe `purchase` | ✅ provado por API |
+| GA4 recebe `refund` | ✅ provado por API |
+| Atribuição colada na sessão real | ✅ mesmo `client_id` em ambos |
+| Meta CAPI / TikTok / First Promoter | ✅ 200 nos dois ciclos |
+| Dedup de reembolso | ✅ |
+| Timeout de fan-out | ⚠️ aberto, sem perda de conversão |
+| `invoice.payment_succeeded` | ⚠️ aberto, caminho único de captura |
+| Tabelas processadas do GA4 | ⏳ conferir em 14/08 |
