@@ -19,37 +19,37 @@ const check = (name, cond, extra = '') => { total++; if (cond) { pass++; console
 // 1. finishes before the bound -> real value, no warning
 logs.length = 0;
 let r = await withTimeout(sleep(20, 'valor'), 500, 'dispatch');
-check('rapido devolve o valor real', r === 'valor', `recebeu ${JSON.stringify(r)}`);
-check('rapido nao gera log', logs.length === 0, JSON.stringify(logs));
+check('fast path returns the real value', r === 'valor', `got ${JSON.stringify(r)}`);
+check('fast path logs nothing', logs.length === 0, JSON.stringify(logs));
 
 // 2. rejects before the bound -> propagates
 logs.length = 0;
 let threw = null;
 try { await withTimeout(fail(20, 'boom'), 500, 'dispatch'); } catch (e) { threw = e.message; }
-check('falha rapida propaga o erro', threw === 'boom', String(threw));
+check('fast failure propagates the error', threw === 'boom', String(threw));
 
 // 3. exceeds the bound but succeeds later -> pending, warn now, success later
 logs.length = 0;
 r = await withTimeout(sleep(300, 'tardio'), 60, 'dispatch');
-check('lento devolve pending', r?.pending === true, JSON.stringify(r));
-check('lento avisa em warn', logs.some(l => l[0] === 'warn' && l[1] === 'background_dispatch_slow'), JSON.stringify(logs));
-check('lento NAO loga erro na hora', !logs.some(l => l[0] === 'error'), JSON.stringify(logs));
+check('slow path returns pending', r?.pending === true, JSON.stringify(r));
+check('slow path warns', logs.some(l => l[0] === 'warn' && l[1] === 'background_dispatch_slow'), JSON.stringify(logs));
+check('slow path does NOT log an error yet', !logs.some(l => l[0] === 'error'), JSON.stringify(logs));
 await sleep(400);
-check('sucesso tardio e registrado', logs.some(l => l[1] === 'background_dispatch_late_success'), JSON.stringify(logs));
-check('sucesso tardio nunca vira erro', !logs.some(l => l[0] === 'error'), JSON.stringify(logs));
+check('late success is recorded', logs.some(l => l[1] === 'background_dispatch_late_success'), JSON.stringify(logs));
+check('late success never becomes an error', !logs.some(l => l[0] === 'error'), JSON.stringify(logs));
 
 // 4. exceeds the bound and then fails -> the real failure still surfaces
 logs.length = 0;
 r = await withTimeout(fail(300, 'quebrou'), 60, 'dispatch');
-check('lento com falha devolve pending', r?.pending === true, JSON.stringify(r));
+check('slow failure returns pending', r?.pending === true, JSON.stringify(r));
 await sleep(400);
-check('falha tardia vira background_dispatch_failed',
+check('late failure becomes background_dispatch_failed',
   logs.some(l => l[0] === 'error' && l[1] === 'background_dispatch_failed' && l[2].error === 'quebrou'),
   JSON.stringify(logs));
 
 // 5. a rejection after the race must not become an unhandled rejection
-process.on('unhandledRejection', (e) => { console.log(`  FAIL  rejeicao nao tratada: ${e?.message}`); process.exitCode = 1; });
+process.on('unhandledRejection', (e) => { console.log(`  FAIL  unhandled rejection: ${e?.message}`); process.exitCode = 1; });
 await sleep(200);
 
-console.log(`\n${pass}/${total} verificacoes passaram`);
+console.log(`\n${pass}/${total} checks passed`);
 if (pass !== total) process.exitCode = 1;

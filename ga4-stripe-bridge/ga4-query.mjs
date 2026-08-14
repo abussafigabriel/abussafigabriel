@@ -4,7 +4,7 @@
  * the purchase?" is answered from the API instead of from a report screenshot.
  *
  * Runs entirely on your machine. The service account key never leaves it -
- * paste only the printed table.
+ * share only the printed table.
  *
  * Prerequisites:
  *   1. GA4 > Admin > Property access management: add the service account email
@@ -60,9 +60,9 @@ async function getAccessToken(key) {
     signature = b64url(signer.sign(key.private_key));
   } catch {
     throw new Error(
-      'a chave privada do arquivo JSON nao pode ser lida. ' +
-        'Confira se o arquivo e a chave da conta de servico baixada do Google Cloud, ' +
-        'com os campos "client_email" e "private_key", e nao outro tipo de credencial.'
+      'the private key in the JSON file could not be read. ' +
+        'Check that the file is the service account key downloaded from Google Cloud, ' +
+        'with "client_email" and "private_key" fields, and not another credential type.'
     );
   }
   const assertion = `${header}.${claims}.${signature}`;
@@ -109,7 +109,7 @@ async function runReport(token, request) {
 }
 
 function table(rows, headers) {
-  if (rows.length === 0) return '  (nenhuma linha)';
+  if (rows.length === 0) return '  (no rows)';
   const widths = headers.map((h, i) =>
     Math.max(h.length, ...rows.map((r) => String(r[i]).length))
   );
@@ -119,16 +119,16 @@ function table(rows, headers) {
 
 const args = parseArgs(process.argv.slice(2));
 if (!args.key) {
-  console.error('Faltou a chave:\n  node ga4-query.mjs --key C:/caminho/chave.json [--days 7]');
+  console.error('Missing key:\n  node ga4-query.mjs --key C:/path/key.json [--days 7]');
   process.exit(1);
 }
 
 const days = Number(args.days ?? 7);
 const key = JSON.parse(readFileSync(args.key, 'utf8'));
 
-console.log(`Propriedade : ${PROPERTY_ID}`);
-console.log(`Conta       : ${key.client_email}`);
-console.log(`Janela      : ultimos ${days} dias (fuso da propriedade)\n`);
+console.log(`Property   : ${PROPERTY_ID}`);
+console.log(`Account    : ${key.client_email}`);
+console.log(`Window     : last ${days} days (property time zone)\n`);
 
 // Wrapped in a function so a failure prints one clear line. A rejected
 // top-level await is a module evaluation error, which no process-level
@@ -136,7 +136,7 @@ console.log(`Janela      : ultimos ${days} dias (fuso da propriedade)\n`);
 async function main() {
 const token = await getAccessToken(key);
 
-// 1. Every event name seen per day - answers "chegou ou nao chegou".
+// 1. Every event name seen per day - answers "did it land or not".
 const byName = await runReport(token, {
   dateRanges: [{ startDate: `${days}daysAgo`, endDate: 'today' }],
   dimensions: [{ name: 'date' }, { name: 'eventName' }],
@@ -151,7 +151,7 @@ const byName = await runReport(token, {
   limit: 200,
 });
 
-console.log('EVENTOS POR DIA');
+console.log('EVENTS PER DAY');
 console.log(
   table(
     (byName.rows ?? []).map((r) => [
@@ -159,7 +159,7 @@ console.log(
       r.dimensionValues[1].value,
       r.metricValues[0].value,
     ]),
-    ['data', 'evento', 'contagem']
+    ['date', 'event', 'count']
   )
 );
 
@@ -177,7 +177,7 @@ const revenue = await runReport(token, {
   limit: 100,
 });
 
-console.log('\nRECEITA POR DIA');
+console.log('\nREVENUE PER DAY');
 console.log(
   table(
     (revenue.rows ?? []).map((r) => [
@@ -186,7 +186,7 @@ console.log(
       r.metricValues[1].value,
       r.metricValues[2].value,
     ]),
-    ['data', 'compras', 'receita', 'reembolsado']
+    ['date', 'purchases', 'revenue', 'refunded']
   )
 );
 
@@ -199,24 +199,24 @@ if (typeof args.transaction === 'string') {
     limit: 200,
   });
 
-  console.log(`\nTRANSACOES (procurando ${args.transaction})`);
+  console.log(`\nTRANSACTIONS (looking for ${args.transaction})`);
   const rows = (txn.rows ?? []).map((r) => [
     r.dimensionValues[0].value,
     r.metricValues[0].value,
     r.metricValues[1].value,
   ]);
-  console.log(table(rows, ['transaction_id', 'compras', 'receita']));
+  console.log(table(rows, ['transaction_id', 'purchases', 'revenue']));
 
   const hit = rows.find((r) => r[0] === args.transaction);
   console.log(
     hit
-      ? `\n>> ENCONTRADA: o GA4 recebeu ${args.transaction} (receita ${hit[2]}).`
-      : `\n>> NAO ENCONTRADA: ${args.transaction} nao esta na propriedade nesta janela.`
+      ? `\n>> FOUND: GA4 received ${args.transaction} (revenue ${hit[2]}).`
+      : `\n>> NOT FOUND: ${args.transaction} is not in the property for this window.`
   );
 }
 }
 
 main().catch((err) => {
-  console.error(`\nFalhou: ${err.message}`);
+  console.error(`\nFailed: ${err.message}`);
   process.exit(1);
 });
