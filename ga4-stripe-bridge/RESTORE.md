@@ -34,7 +34,7 @@ sensíveis substituídos por impressão digital SHA-256 para conferência.
 curl -s https://seshdx-tracking-webhook-869202251383.us-central1.run.app/health
 ```
 
-Esperado: `"version":"5.1.1"` e `"ga4":true` (ou `5.1.2`, se restaurar a `00052-v512`).
+Esperado: `"version":"5.1.2"` e `"ga4":true` (ou `5.1.1`, se você tiver voltado para a `00051-sfx`).
 
 ## Histórico de revisões relevante
 
@@ -48,3 +48,34 @@ Esperado: `"version":"5.1.1"` e `"ga4":true` (ou `5.1.2`, se restaurar a `00052-
 
 **Nunca use `--set-env-vars`** — substitui o conjunto inteiro. Foi assim que 23 das
 24 variáveis foram apagadas em 11/08. Use `--update-env-vars`.
+
+---
+
+# Revogar a chave `claude-debug` — faça isto ao fim do projeto
+
+A conta de serviço `claude-debug@seshdx-tracking.iam.gserviceaccount.com` foi
+criada para este diagnóstico e tem poderes altos (Cloud Run Admin, Datastore
+Owner). A chave dela circulou em conversa. **Precisa ser apagada.**
+
+Não é urgente ao ponto de derrubar nada: apagar a chave não afeta o serviço em
+produção, que roda com outra identidade (`869202251383-compute@developer...`).
+
+## Pelo console, sem comando
+
+1. Abrir **https://console.cloud.google.com/iam-admin/serviceaccounts?project=seshdx-tracking**
+2. Clicar em **claude-debug@seshdx-tracking.iam.gserviceaccount.com**
+3. Aba **KEYS** → localizar a chave de id `0fb61f39ce239dcda3b220ffd2b52d3f7f7bf441`
+   → ícone de lixeira → **Delete**
+4. Opcional, mais seguro ainda: voltar à lista e **excluir a conta de serviço
+   inteira**, já que ela não é usada por nada em produção.
+
+## Também vale apagar
+
+- O arquivo da chave em `_INTERNO_NAO_COMPARTILHAR/` na sua máquina.
+- O acesso dessa conta ao GA4: **GA4 → Admin → Property access management** →
+  remover `claude-debug@seshdx-tracking.iam.gserviceaccount.com`.
+
+## Como confirmar que deu certo
+
+Depois de apagar, qualquer script deste pacote que use a chave deve falhar com
+erro de credencial inválida. Se falhar, está revogada.
