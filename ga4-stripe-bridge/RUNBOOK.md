@@ -136,8 +136,20 @@ dentro dessa janela ou a evidência mais rápida se perde.
 
 ## FASE 5 — Limpeza
 
-Excluir do GA4 as transações de teste: a de 13/08 (`pi_3U40tr7nPZQ9eEGQ1xMtBxbP`),
-a nova, e a receita antiga de ~US$1.500 em múltiplos de $229.
+**Marcar** as transações de teste para serem ignoradas na análise.
+
+O GA4 **não apaga uma transação específica** — a única exclusão que existe é por
+intervalo de datas (Admin → Data deletion requests), que levaria dados legítimos
+junto. O correto é excluir estes IDs nos relatórios e explorações:
+
+```
+pi_3U43tT7nPZQ9eEGQ1oRWPnaB   4,18   teste de 13/08 (reembolsado, receita 0)
+diag-alt-1786646097511         0,01   probe de diagnóstico
+test-verify-2026               0,01   teste manual de 11/08
+cus_V3P8ZJcdgo3qcK             2,17   bug antigo: id de cliente como transação
+~US$ 1.500 em múltiplos de 229        receita de teste anterior ao projeto
+pi_3U40tr7nPZQ9eEGQ1xMtBxbP    —      NÃO precisa: nunca chegou ao GA4
+```
 
 ---
 
@@ -168,18 +180,25 @@ never a claim.
 | GA4 is the single source of truth for revenue | GA4 Transactions report with the transaction ID and its value |
 | Purchases are tracked end to end | `purchase` event count in Engagement → Events, plus the matching Stripe payment |
 | Refunds reverse revenue correctly | `refund` event, and net revenue returning to zero for that transaction |
-| Affiliate attribution works | First Promoter commission `approved`, with GA4 session source showing the affiliate |
+| Affiliate attribution works | First Promoter commission `approved`. **Not** GA4 session source — see the note below |
 | Ad platforms receive the conversion | Meta CAPI `200`, TikTok `code=0`, deduplicated by `event_id` |
 | No PHI reaches any analytics tool | Log field list: `action, code, dest, event, level, req_id, result, status, ts, version` |
 
 **Two things to state plainly rather than let her discover them:**
 
-1. **A fully refunded transaction correctly reads $0.00 in GA4.** GA4 subtracts a
+1. **Affiliate credit lives in First Promoter, not in GA4's source report.** Purchases
+   sent server-side carry no session context, so GA4 shows `(not set)` for session
+   source on them. GA4 is authoritative for **revenue and conversions**; First
+   Promoter is authoritative for **which affiliate earned the commission**. Verified
+   on 14/08: every transaction reads `(not set)`, and First Promoter recorded both
+   the sale and the reversal.
+
+2. **A fully refunded transaction correctly reads $0.00 in GA4.** GA4 subtracts a
    refund from the original purchase when both carry the same transaction ID. Zero
    revenue on a refunded test is the system working, not failing. Say this before
    showing the reports, or the first screenshot she sees will look like a failure.
 
-2. **Consent wording needs a correction.** The delivered document says *"no tracking
+3. **Consent wording needs a correction.** The delivered document says *"no tracking
    fires before a visitor accepts"*, but `analytics_storage` is `granted` by default
    and `_ga` cookies are written on load — which Hillary approved for the Humblytics
    A/B test. The behaviour is fine; the sentence is not. Fix the sentence.

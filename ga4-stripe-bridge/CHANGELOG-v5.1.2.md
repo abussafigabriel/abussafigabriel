@@ -72,10 +72,23 @@ node test/payment-intent.test.mjs  # 14/14
 
 ## Validação em produção
 
+Publicada às 21:35 UTC de 13/08 e validada por `/health`. **Provada com tráfego de
+cliente real às 03:07:34 UTC de 14/08** — compra `pi_3U4BSo7nPZQ9eEGQ0OjYyjSN`,
+US$ 145, sem intervenção de ninguém:
+
 ```
-/health  ->  200  {"ok":true,"version":"5.1.2", todas as dependencias true}
-logs da revisao 00052-v512  ->  0 erros, server_started limpo
+03:07:27  stripe_purchase_deferred    level=info   handoff=payment_intent.succeeded
+03:07:34  ga4_purchase_outbound       value=145
+03:07:35  ga4_send_result             204
+03:07:43  purchase_dispatched         ga4 · meta · tiktok · first_promoter   (16s)
 ```
+
+- A correção 1 aparece exatamente como projetada: `stripe_purchase_deferred` em
+  nível `info`, e o `payment_intent.succeeded` capturou a compra 7s depois.
+- A correção 2 se confirma pela **ausência**: nenhum `background_dispatch_failed`,
+  16s de fan-out contra o limite de 90s.
+- **Zero entradas `severity>=WARNING`** no serviço desde o deploy.
+- A receita de US$ 145 está nas tabelas processadas do GA4.
 
 ## Rollback
 

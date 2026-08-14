@@ -210,8 +210,10 @@ A compra de 13/08 (`pi_3U40tr…`) **nunca entrou** — não há o que excluir d
 | Atribuição colada na sessão real | ✅ mesmo `client_id` nos dois eventos |
 | Deduplicação de reembolso | ✅ 1 despacho, era 2 |
 | Meta CAPI / TikTok / First Promoter | ✅ 200 nos dois ciclos |
-| Timeout de fan-out | ✅ corrigido na v5.1.2 |
-| `invoice.payment_succeeded` | ✅ corrigido na v5.1.2 |
+| Timeout de fan-out | ✅ corrigido na v5.1.2, provado em produção |
+| `invoice.payment_succeeded` | ✅ corrigido na v5.1.2, provado em produção |
+| Atribuição de afiliado | ✅ no First Promoter — limitação do GA4 documentada |
+| Erros em produção | ✅ zero desde 21:35 de 13/08 |
 
 - Diagnóstico e causa raiz: este arquivo
 - Evidência da compra e do reembolso: `EVIDENCE.md`
@@ -222,3 +224,7 @@ A compra de 13/08 (`pi_3U40tr…`) **nunca entrou** — não há o que excluir d
 
 **Em produção:** revisão `00052-v512`, v5.1.2, `/health` 200 com todas as
 dependências verdes e zero erros nos logs.
+
+**Provado com dinheiro real:** compra de cliente `pi_3U4BSo7nPZQ9eEGQ0OjYyjSN`
+(US$ 145) entrou sozinha às 03:07 UTC de 14/08 e percorreu o pipeline inteiro em
+16 segundos, sem um único erro.

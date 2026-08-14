@@ -122,8 +122,10 @@ o handoff cross-domain, não o worker.
    correção 7.2: tem que sair **um** `refund_dispatched`, não dois.
 2. Em 14/08, conferir as tabelas processadas: `purchase` na contagem de eventos,
    a transação em Transactions, e a atribuição por sessão.
-3. Excluir do GA4 as transações de teste:
-   - `pi_3U43tT7nPZQ9eEGQ1oRWPnaB` (esta)
+3. **Marcar** as transações de teste para ignorar na análise. O GA4 não apaga uma
+   transação específica — a exclusão existente é por intervalo de datas e levaria
+   dados legítimos junto. IDs a excluir em relatórios e explorações:
+   - `pi_3U43tT7nPZQ9eEGQ1oRWPnaB` (teste de 13/08, reembolsado, receita 0)
    - `diag-alt-1786646097511` e eventos `diag_ping` / `diag_ping2` (probes)
    - `test-verify-2026` e `cus_V3P8ZJcdgo3qcK` (11/08)
    - receita antiga ~US$1.500 (múltiplos de $229)
@@ -198,3 +200,77 @@ Sintoma visível no próprio Stripe: dos quatro endpoints, três responderam às
 As duas pendências foram fechadas na **v5.1.2** (revisão `00052-v512`, publicada
 21:35 UTC). Detalhes e testes em `CHANGELOG-v5.1.2.md`; o código-fonte completo
 está em `serverless-v5/`.
+
+
+---
+
+# 14/08 — Validação em produção real e fecho da atribuição
+
+Verificado às 09:43 UTC pela GA4 Data API e pelo Cloud Logging.
+
+## A v5.1.2 foi provada por tráfego de cliente real
+
+Uma compra que **ninguém orquestrou** entrou às **03:07:34 UTC**, ~5h30 depois do
+deploy: `pi_3U4BSo7nPZQ9eEGQ0OjYyjSN`, **US$ 145**, cliente `cus_UtonccvbF5RCIM`.
+
+```
+03:07:27  stripe_purchase_deferred    level=info   handoff=payment_intent.succeeded
+03:07:34  ga4_purchase_outbound       value=145
+03:07:35  ga4_send_result             204
+03:07:36  meta 200 · tiktok 200
+03:07:37  first_promoter 204
+03:07:43  purchase_dispatched         4 destinos ok          (16s no total)
+```
+
+Isso fecha a ressalva que ficou ontem — a v5.1.2 tinha passado só por `/health`:
+
+| Correção | Prova com dinheiro real |
+|---|---|
+| `invoice.payment_succeeded` | `stripe_purchase_deferred` em nível **info**, com `handoff`. O antigo `stripe_purchase_missing_payment_intent` em `ERROR` sumiu, e o repasse funcionou: a invoice adiou, o `payment_intent.succeeded` capturou 7s depois |
+| Timeout de fan-out | **Nenhum** `background_dispatch_failed`. 16s contra o limite de 90s |
+| Serviço inteiro | **Zero** entradas `severity>=WARNING` desde o deploy das 21:35 |
+
+## As tabelas processadas confirmam o ciclo
+
+```
+13/08   purchase 3 · refund 1 · intake_start 5 · begin_checkout 7
+        receita 145,01   reembolsado 4,18
+
+pi_3U43tT7nPZQ9eEGQ1oRWPnaB   1 compra   receita 0     <- nosso teste, reembolsado
+pi_3U4BSo7nPZQ9eEGQ0OjYyjSN   1 compra   receita 145   <- cliente real
+```
+
+O nosso teste aparece com receita **0** porque compra e reembolso entraram com o
+mesmo `transaction_id` e o GA4 subtraiu. Desta vez é subtração de verdade — não
+ausência de dado, como era em 13/08 antes da correção do segredo.
+
+## Atribuição — conclusão (fecha a seção 5.3)
+
+Todas as transações mostram `sessionSource` e `firstUserSource` como `(not set)`,
+inclusive a nossa, que tinha o `client_id` correto. São duas causas distintas, e
+confundi-las leva a conserto errado:
+
+1. **Limitação do Measurement Protocol.** Compra enviada pelo servidor sem
+   `session_id` não se junta a uma sessão, então dimensão de escopo de sessão fica
+   vazia. Mandar `session_id` esbarra no defeito conhecido do GA4 que descarta
+   `purchase` — é por isso que o worker o omite, e por isso **não** mexemos nisso.
+2. **Renovação de assinatura não tem sessão para atribuir.** A compra das 03:07
+   registrou `attribution_not_found_for_purchase` e não houve **nenhum** evento da
+   OpenLoop na janela. Para cobrança recorrente de madrugada isso é o esperado, não
+   um defeito. Compras que passam pelo funil rastreado **pegam** o `client_id`
+   real — o teste das 19:02 provou (`clientIdPresent=true`).
+
+**Posicionamento da entrega:** o GA4 é fonte de verdade de **receita e conversão**;
+o **crédito de afiliado vive no First Promoter**, que registrou a venda e o estorno
+nos dois ciclos. Prometer origem de campanha no GA4 para compras server-side seria
+prometer o que a ferramenta não entrega.
+
+## Estado final
+
+| Item | Status |
+|---|---|
+| GA4 recebe `purchase` e `refund` | ✅ provado por API, duas vezes |
+| Correções 7.1 e 7.2 | ✅ provadas com tráfego real |
+| v5.1.2 (log e timeout) | ✅ provada com compra de cliente real |
+| Erros em produção | ✅ zero desde 21:35 de 13/08 |
+| Atribuição de afiliado | ✅ no First Promoter — limitação do GA4 documentada |
